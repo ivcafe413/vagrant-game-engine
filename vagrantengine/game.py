@@ -11,7 +11,7 @@ from pygame.sprite import Sprite, Group, LayeredDirty
 from pyqtree import Index
 
 # from constants import ROOT_PATH
-from vagrantengine.sprites import Actor, Tile, MySprite
+from sprites import Actor, Tile, MySprite
 
 # SCENES = os.path.join(ROOT_PATH, "scenes")
 # MAPS = os.path.join(ROOT_PATH, "maps")
@@ -91,26 +91,27 @@ class Stage(ABC):
             s.resolve_collisions(self.collision_index)
 
         # Check boundaries
-        temp = self.player_character.bbox # Immutable value
-        changed = False
+        if self.player_character is not None:
+            temp = self.player_character.bbox # Immutable value
+            changed = False
 
-        if self.player_character.left < 0:
-            self.player_character.rect.left = 0
-            changed = True
-        elif self.player_character.right > self.boundary[0]:
-            self.player_character.rect.right = self.boundary[0]
-            changed = True
+            if self.player_character.left < 0:
+                self.player_character.rect.left = 0
+                changed = True
+            elif self.player_character.right > self.boundary[0]:
+                self.player_character.rect.right = self.boundary[0]
+                changed = True
 
-        if self.player_character.top < 0:
-            self.player_character.rect.top = 0
-            changed = True
-        elif self.player_character.bottom > self.boundary[1]:
-            self.player_character.rect.bottom = self.boundary[1]
-            changed = True
+            if self.player_character.top < 0:
+                self.player_character.rect.top = 0
+                changed = True
+            elif self.player_character.bottom > self.boundary[1]:
+                self.player_character.rect.bottom = self.boundary[1]
+                changed = True
 
-        if changed:
-            self.collision_index.remove(s, temp)
-            self.collision_index.insert(s, s.bbox)
+            if changed:
+                self.collision_index.remove(s, temp)
+                self.collision_index.insert(s, s.bbox)
 
 def load_scene(scenes: str, images: str, maps: str, scene_id: int, stage: Stage):
     # Clear the scene (kill & gc the sprites for memory)

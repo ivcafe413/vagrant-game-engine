@@ -1,0 +1,54 @@
+{
+    "actors": [
+        {
+            "name": "Dark Link",
+            "player_character": true,
+            "size": 32,
+            "spritesheet": {
+                "file": "Dark_Link_SS_Vagrant_v1.png",
+                "slice_specs": {
+                    "w": 12,
+                    "h": 18,
+                    "spacing": 1
+                },
+                "slices": [4, 4]
+            },
+            "animations": {
+                "walking_up": {
+                    "slices": [1, 0, 1, 2],
+                    "durations": [10, 10, 10, 10]
+                },
+                "walking_down": {
+                    "slices": [9, 8, 9, 10],
+                    "durations": [10, 10, 10, 10]
+                },
+                "walking_left": {
+                    "slices": [7, 6],
+                    "durations": [10, 10]
+                },
+                "walking_right": {
+                    "slices": [4, 5],
+                    "durations": [10, 10]
+                }
+            },
+            "initial_slice": 9
+        }
+    ],
+    "props": [
+        {
+            "name": "Coffee Table",
+            "size": 32,
+            "image": "coffee_table_1.png",
+            "x": 256,
+            "y": 128,
+            "solid": true
+        }
+    ],
+    "tilemap": {
+        "size": 64,
+        "tiles": {
+            "w": "wood_floor_1.png"
+        },
+        "map": "empty_house"
+    }
+}

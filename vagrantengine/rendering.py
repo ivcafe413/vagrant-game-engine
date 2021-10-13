@@ -7,7 +7,7 @@ import pygame.display
 import pygame.draw
 import pygame.font
 
-from vagrantengine.game import Stage
+from game import Stage
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_WHITE = (255, 255, 255)
@@ -118,26 +118,27 @@ class DebugRenderer:
 
         self._surface.fill(COLOR_TRANSPARENT)
         
-        debug_dict = {
-            "Animation Frame": self._game.player_character.animator.frame_count,
-            "Frame Threshold": self._game.player_character.animator.threshold,
-            "Current Animation": self._game.player_character.animator.current_animation,
-            "Current Index": self._game.player_character.animator.current_index,
-            "Current Slice": self._game.player_character.animator.current_slice,
-            "Stack Count": len(self._game.player_character.animator.stack),
-            "Is Current ?": (self._game.player_character.animator.current is not None),
-            "Player Position": self._game.player_character.bbox,
-            "Table Position": self._game.props.sprites()[0].bbox,
-            "Sprites Moving": len(list(s for s in self._game.sprites.sprites() if s.is_moving))
-        }
-        current_height = 10
-        for k, v in debug_dict.items():
-            to_render = "{0}: {1}".format(k, v)
-            font_width, font_height = self.debug_font.size(to_render)
-            draw_text(self._surface, to_render, 10, current_height, self.debug_font)
+        if self._game.player_character is not None:
+            debug_dict = {
+                "Animation Frame": self._game.player_character.animator.frame_count,
+                "Frame Threshold": self._game.player_character.animator.threshold,
+                "Current Animation": self._game.player_character.animator.current_animation,
+                "Current Index": self._game.player_character.animator.current_index,
+                "Current Slice": self._game.player_character.animator.current_slice,
+                "Stack Count": len(self._game.player_character.animator.stack),
+                "Is Current ?": (self._game.player_character.animator.current is not None),
+                "Player Position": self._game.player_character.bbox,
+                "Table Position": self._game.props.sprites()[0].bbox,
+                "Sprites Moving": len(list(s for s in self._game.sprites.sprites() if s.is_moving))
+            }
+            current_height = 10
+            for k, v in debug_dict.items():
+                to_render = "{0}: {1}".format(k, v)
+                font_width, font_height = self.debug_font.size(to_render)
+                draw_text(self._surface, to_render, 10, current_height, self.debug_font)
 
-            changes.append(pygame.Rect(10, current_height, font_width, font_height))
-            current_height += font_height
+                changes.append(pygame.Rect(10, current_height, font_width, font_height))
+                current_height += font_height
 
         pygame.display.get_surface().blit(self._surface, (0, 0))
 

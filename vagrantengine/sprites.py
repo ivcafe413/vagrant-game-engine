@@ -4,18 +4,19 @@ import os
 import pygame
 import pygame.image
 import pygame.transform
+import pygame.mask
 from pygame import Vector2
 from pygame.sprite import DirtySprite
 from pyqtree import Index
 
-from vagrantengine.animators import SpriteAnimator
+from animators import SpriteAnimator
 
 # from constants import ROOT_PATH
 
 # IMAGES = os.path.join(ROOT_PATH, "assets", "images")
         
 class MySprite(DirtySprite):
-    def __init__(self, images_path: str, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
         self.name = kwargs.get("name", self.__class__.__name__)
 
@@ -24,20 +25,26 @@ class MySprite(DirtySprite):
 
         # Always account for possible keyword argument empty values (when possible)
         spritesheet = kwargs.get("spritesheet")
-        image_file = kwargs.get("image")
+        image_file = kwargs.get("image_file")
         size = kwargs.get("size")
 
         if spritesheet is not None:
-            self.images = slice_spritesheet(size, images_path, **spritesheet)
+            self.images = slice_spritesheet(size, kwargs.get("images_path"), **spritesheet)
             self.image = self.images[kwargs.get("initial_slice", 0)]
+            
         elif image_file is not None:
             # self.images = [kwargs.get("image", pygame.Surface((size, size)))]
             # self.image = self.images[0]
-            image = pygame.image.load(os.path.join(images_path, image_file)).convert_alpha()
+            image = pygame.image.load(os.path.join(kwargs.get("images_path"), image_file)).convert_alpha()
             # TODO: Scaled Height against set Width (size)
             image = pygame.transform.scale(image, (size, size))
             self.images = [image]
             self.image = image
+            # self.mask = pygame.mask.from_surface(self.image)
+        else:
+            self.image = kwargs.get("image")
+        
+        self.mask = pygame.mask.from_surface(self.image)
 
         animations = kwargs.get("animations")
         if animations is not None:
@@ -63,11 +70,15 @@ class MySprite(DirtySprite):
             if self.animator.dirty:
                 # Change in animation frame
                 self.image = self.images[self.animator.current_slice]
+                self.mask = pygame.mask.from_surface(self.image)
                 self.dirty = 1
                 self.animator.dirty = False
 
     def resolve_collisions(self, index: Index):
         collisions = (o for o in index.intersect(self.bbox) if o != self)
+
+        # for o in index.intersect(self.bbox) if o != self:
+
         # TODO: Build Priority Index for movers/resolution
         for c in collisions:
             if c.solid:

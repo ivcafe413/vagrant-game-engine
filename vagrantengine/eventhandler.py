@@ -5,7 +5,7 @@ import pygame
 import pygame.event
 from pygame.event import Event
 
-from vagrantengine.game import Stage
+from game import Stage
 
 _GAME = None # type: Stage
 _BINDINGS = None # type: dict[int, str]
@@ -23,11 +23,12 @@ def register_key_bindings(bindings):
 
 def handle_event(event: Event):
     # event_type = event.type
-    
+    # logging.info(f"Event: {event.type}")
     if event.type == pygame.QUIT:
         pygame.quit()
         sys.exit(0)
     elif event.type == pygame.KEYDOWN:
+        logging.info(f"Key: {event.key}")
         action = _BINDINGS.get(event.key)
         if action is not None: _GAME.actions[action](pygame.KEYDOWN)
     elif event.type == pygame.KEYUP:

@@ -4,9 +4,9 @@ import pygame
 import pygame.display
 import pygame.time
 
-from vagrantengine.game import Stage
-from vagrantengine import eventhandler
-from vagrantengine.rendering import Renderer
+from game import Stage
+import eventhandler
+from rendering import Renderer
 
 FRAME_RATE = 60
 MS_PER_FRAME = (1 / FRAME_RATE) * 1000
