@@ -7,11 +7,11 @@ from abc import ABC
 import pygame
 import pygame.image
 import pygame.transform
-from pygame.sprite import Sprite, Group, LayeredDirty
+from pygame.sprite import GroupSingle, Sprite, Group, LayeredDirty
 from pyqtree import Index
 
 # from constants import ROOT_PATH
-from sprites import Actor, Tile, MySprite
+from .sprites import Actor, Tile, MySprite
 
 # SCENES = os.path.join(ROOT_PATH, "scenes")
 # MAPS = os.path.join(ROOT_PATH, "maps")
@@ -26,12 +26,12 @@ class Stage(ABC):
     Should extend Stage, add registered components for different game types"""
     def __init__(self):
         # Concrete Groups
-        self.sprites = LayeredDirty() # TODO: Extend class to account for MySprite type?
+        self.sprite_layers = LayeredDirty() # TODO: Extend class to account for MySprite type?
         self.actors = Group()
-        self.tilemap = Group()
+        self.tilemap = GroupSingle()
         self.props = Group()
-
-        self.player_character = None # type: Actor
+        self.player = GroupSingle()
+        # self.player_character = None # type: Actor
         # TODO: Make boundary a rect?
         self.boundary = None # type: tuple
         self.collision_index = None # type: Index
@@ -114,48 +114,48 @@ class Stage(ABC):
                 self.collision_index.insert(s, s.bbox)
 
 def load_scene(scenes: str, images: str, maps: str, scene_id: int, stage: Stage):
-    # Clear the scene (kill & gc the sprites for memory)
-    sprites = stage.sprites.sprites() # type: list[Sprite]
-    # Remove each sprite from all group membership
-    for s in sprites:
-        s.kill()
-    sprites.clear() # TODO: Need to test if this is clearing memory correctly
+    # # Clear the scene (kill & gc the sprites for memory)
+    # sprites = stage.sprite_layers.sprites() # type: list[Sprite]
+    # # Remove each sprite from all group membership
+    # for s in sprites:
+    #     s.kill()
+    # sprites.clear() # TODO: Need to test if this is clearing memory correctly
 
     # Load in target scene
-    scene_file = os.path.join(scenes, str(scene_id) + ".json")
-    with open(scene_file) as f:
-        scene = json.load(f)
+    # scene_file = os.path.join(scenes, str(scene_id) + ".json")
+    # with open(scene_file) as f:
+    #     scene = json.load(f)
 
     # Populate the set of actors for the scene (Sprites -> Group)
     actors = [construct_actor(images, **a) for a in scene["actors"]]
 
     # Construct the tilemap for the scene
-    tilemap = list(construct_tilemap(images, maps, **scene["tilemap"]))
+    # tilemap = list(construct_tilemap(images, maps, **scene["tilemap"]))
 
     # Construct various screen objects/props
     props = [MySprite(images, **p) for p in scene["props"]]
 
     # Begin constructing scene
-    max_x = max(tile.right for tile in tilemap)
-    max_y = max(tile.bottom for tile in tilemap)
-    stage.boundary = (max_x, max_y)
+    # max_x = max(tile.right for tile in tilemap)
+    # max_y = max(tile.bottom for tile in tilemap)
+    # stage.boundary = (max_x, max_y)
 
-    # Scaffold Collision QuadTree
-    stage.collision_index = Index(bbox=(0, 0, max_x, max_y))
+    # # Scaffold Collision QuadTree
+    # stage.collision_index = Index(bbox=(0, 0, max_x, max_y))
 
     # Add all the things to the groups
-    stage.tilemap.add(tilemap)
+    # stage.tilemap.add(tilemap)
     stage.actors.add(actors)
     stage.props.add(props)
 
     stage.player_character = next((a for a in actors if a.is_player), None)
 
-    stage.sprites.add(tilemap, layer=0)
-    stage.sprites.add(props, layer=1)
+    # stage.sprite_layers.add(tilemap, layer=0)
+    stage.sprite_layers.add(props, layer=1)
     # TODO: Split layers?
-    stage.sprites.add(actors, layer=1)
+    stage.sprite_layers.add(actors, layer=1)
 
-    for s in stage.sprites.sprites():
+    for s in stage.sprite_layers.sprites():
         stage.collision_index.insert(s, s.bbox)
 
 def construct_actor(images_path: str, **kwargs) -> Actor:

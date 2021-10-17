@@ -7,7 +7,7 @@ import pygame.display
 import pygame.draw
 import pygame.font
 
-from game import Stage
+from .game import Stage
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_WHITE = (255, 255, 255)

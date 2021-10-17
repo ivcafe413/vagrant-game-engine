@@ -4,9 +4,9 @@ import pygame
 import pygame.display
 import pygame.time
 
-from game import Stage
-import eventhandler
-from rendering import Renderer
+from .game import Stage
+from .eventhandler import handle_events
+from .rendering import Renderer
 
 FRAME_RATE = 60
 MS_PER_FRAME = (1 / FRAME_RATE) * 1000
@@ -29,7 +29,7 @@ def game_loop(renderer: Renderer):
         time_buffer += GAME_CLOCK.get_time()
         # If enough time has passed for at least one frame
         while time_buffer >= MS_PER_FRAME:
-            eventhandler.handle_events()
+            handle_events()
             _GAME.update()
             time_buffer -= MS_PER_FRAME
 

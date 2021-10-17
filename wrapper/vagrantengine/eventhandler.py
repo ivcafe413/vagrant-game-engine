@@ -5,7 +5,7 @@ import pygame
 import pygame.event
 from pygame.event import Event
 
-from game import Stage
+from .game import Stage
 
 _GAME = None # type: Stage
 _BINDINGS = None # type: dict[int, str]

@@ -9,7 +9,7 @@ from pygame import Vector2
 from pygame.sprite import DirtySprite
 from pyqtree import Index
 
-from animators import SpriteAnimator
+from .animators import SpriteAnimator
 
 # from constants import ROOT_PATH
 
@@ -188,6 +188,14 @@ class Actor(MySprite):
 class Tile(MySprite):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+# New Set of Classes around re-vamped TileMap loading system
+class TilemapSprite(DirtySprite):
+    def __init__(self, tilemap: pygame.Surface, **kwargs):
+        super().__init__()
+
+        self.image = tilemap
+        self.rect = tilemap.get_rect()
 
 def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slices: list) -> list[pygame.Surface]:
     """file, frame_size, frames"""

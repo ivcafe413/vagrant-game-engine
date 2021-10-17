@@ -234,7 +234,7 @@
  "tilesets":[
         {
          "firstgid":1,
-         "source":"ryokan_nightmare.json"
+         "source":"..\/tilesets\/ryokan_nightmare.json"
         }],
  "tilewidth":32,
  "type":"map",
