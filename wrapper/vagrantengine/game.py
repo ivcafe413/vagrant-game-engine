@@ -12,7 +12,7 @@ from pygame.sprite import GroupSingle, Group, LayeredDirty
 from pyqtree import Index
 
 # from constants import ROOT_PATH
-from .sprites import GameSprite, MoveableSprite
+from .sprites import ActorSprite, GameSprite, MoveableSprite
 
 # SCENES = os.path.join(ROOT_PATH, "scenes")
 # MAPS = os.path.join(ROOT_PATH, "maps")
@@ -32,7 +32,7 @@ class Stage(ABC):
         self.tilemap = GroupSingle()
         self.props = Group()
         # self.player = GroupSingle()
-        self.player = None # type: MoveableSprite
+        self.player = None # type: ActorSprite
         # TODO: Make boundary a rect?
         self.boundary = None # type: tuple
         self.collision_index = None # type: Index
@@ -93,40 +93,28 @@ class Stage(ABC):
             self.collision_index.insert(s, s.bbox)
             s.resolve_collisions(self.collision_index)
 
-        # Check boundaries
-        if self.player is not None:
-            temp = self.player.bbox # Immutable value
-            changed = False
+            # Check boundaries
+            if self.player is not None:
+                temp = self.player.bbox # Immutable value
+                changed = False
 
-            if self.player.left < 0:
-                self.player.rect.left = 0
-                changed = True
-            elif self.player.right > self.boundary[0]:
-                self.player.rect.right = self.boundary[0]
-                changed = True
+                if self.player.left < 0:
+                    self.player.rect.left = 0
+                    changed = True
+                elif self.player.right > self.boundary[0]:
+                    self.player.rect.right = self.boundary[0]
+                    changed = True
 
-            if self.player.top < 0:
-                self.player.rect.top = 0
-                changed = True
-            elif self.player.bottom > self.boundary[1]:
-                self.player.rect.bottom = self.boundary[1]
-                changed = True
+                if self.player.top < 0:
+                    self.player.rect.top = 0
+                    changed = True
+                elif self.player.bottom > self.boundary[1]:
+                    self.player.rect.bottom = self.boundary[1]
+                    changed = True
 
-            if changed:
-                self.collision_index.remove(s, temp)
-                self.collision_index.insert(s, s.bbox)
-
-def load_scene(stage: Stage):
-    stage.actors.add(actors)
-
-    stage.player = next((a for a in actors if a.is_player), None)
-
-    # stage.sprite_layers.add(tilemap, layer=0)
-    # TODO: Split layers?
-    stage.sprite_layers.add(actors, layer=1)
-
-    for s in stage.sprite_layers.sprites():
-        stage.collision_index.insert(s, s.bbox)
+                if changed:
+                    self.collision_index.remove(s, temp)
+                    self.collision_index.insert(s, s.bbox)
 
 # def construct_actor(images_path: str, **kwargs) -> Actor:
 #     """Instantiate an Actor object based on dictionary/json values"""

@@ -3,6 +3,11 @@
         "color": "#ff00aa00",
         "name": "Player",
         "properties": [
+            {
+                "name": "is_player",
+                "type": "bool",
+                "value": true
+            }
         ]
     },
     {
@@ -20,12 +25,22 @@
         "color": "#ffa0a0a4",
         "name": "Spawn Point",
         "properties": [
+            {
+                "name": "solid",
+                "type": "bool",
+                "value": false
+            }
         ]
     },
     {
         "color": "#ffff00ff",
         "name": "Wall",
         "properties": [
+            {
+                "name": "solid",
+                "type": "bool",
+                "value": true
+            }
         ]
     }
 ]

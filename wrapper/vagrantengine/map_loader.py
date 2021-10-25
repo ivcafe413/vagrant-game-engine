@@ -9,8 +9,10 @@ import pygame.image
 from pygame.sprite import Sprite
 from pyqtree import Index
 
+from wrapper.vagrantengine.animators import SpriteAnimator
+
 from .game import Stage
-from .sprites import GameSprite, TilemapSprite
+from .sprites import ActorSprite, GameSprite, TilemapSprite
 from .tiled import TiledObject, TiledType
 
 class MapLoader:
@@ -19,6 +21,7 @@ class MapLoader:
         self.maps_path = os.path.join(assets_path, "maps")
         self.images_path = os.path.join(assets_path, "images")
         self.tilesets_path = os.path.join(assets_path, "tilesets")
+        self.actors_path = os.path.join(assets_path, "actors")
         # self.tilesets = tilesets
         self.global_tileset = dict() # type: dict[int, pygame.Surface]
         self.object_types = dict() # type: dict[str, TiledType]
@@ -57,6 +60,15 @@ class MapLoader:
                 self.global_tileset[tile_gid] = tile
                 tile_gid += 1
 
+    def load_tiled_types(self):
+        types_file = os.path.join(self.assets_path, "objecttypes.json")
+        with open(types_file) as f:
+            object_types = json.load(f)
+
+        for ot in object_types:
+            name = ot.get("name")
+            self.object_types[name] = TiledType(name, ot["properties"])
+
     def load_from_tilelayer(self, tilelayer: dict, tilewidth: int, tileheight: int) -> pygame.Surface:
         """Build the full map image/Surface from layer information"""
         map_columns = tilelayer["width"]
@@ -92,15 +104,6 @@ class MapLoader:
 
         return map_surface
 
-    def load_tiled_types(self):
-        types_file = os.path.join(self.assets_path, "objecttypes.json")
-        with open(types_file) as f:
-            object_types = json.load(f)
-
-        for ot in object_types:
-            name = ot.get("name")
-            self.object_types[name] = TiledType(name, ot["properties"])
-
     def load_from_objectlayer(self, objectlayer: dict):
         """Generate List of Sprite Objects to return and add to game/stage."""
         object_list = objectlayer['objects'] # type: list[dict]
@@ -132,21 +135,64 @@ class MapLoader:
         environment_types = ["Wall", "Solid", "Spawn Point"]
         
         for o in tiled_objects:
-            image = None # type: pygame.Surface
-            if o.gid is not None:
-                logging.info(f"Tiled Object Global Id: {o.gid} for {o.name}")
-                image = self.global_tileset[o.gid]
-
             object_sprite = None # type: GameSprite
+            image = None # type: pygame.Surface
+
             if o.type.name in environment_types:
-                # Solid(collidable) normal Game Object
-                # object_sprite = GameSprite(o.rect.x, o.rect.y, o.rect.width, o.rect.height, image, name=o.name, type=o.type)
-                # Accounting for weird Tiled coordniate bug
-                object_sprite = GameSprite(o.rect.x, (o.rect.y - o.rect.h), o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+                if o.gid is not None:
+                    logging.info(f"Tiled Object Global Id: {o.gid} for {o.name}")
+                    image = self.global_tileset[o.gid]
+                    # Accounting for weird Tiled coordniate bug
+                    # TILED OBJECTS START COUNTING COORDINATES FROM BOTTOM-RIGHT!
+                    object_sprite = GameSprite(o.rect.x, (o.rect.y - o.rect.h), o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+                else:
+                    # Solid(collidable) normal Game Object
+                    # object_sprite = GameSprite(o.rect.x, o.rect.y, o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+                    object_sprite = GameSprite(o.rect.x, o.rect.y, o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+
                 for prop in object_sprite.type.additional_properties:
                     setattr(object_sprite, prop, object_sprite.type.additional_properties[prop])
 
-            yield object_sprite
+                yield object_sprite
+
+    def load_actor_to_stage(self, actor_type: str, x, y, stage: Stage, layer: int):
+        """Use type name for Actor custom json load"""
+        actor_file = os.path.join(self.actors_path, f"{actor_type}.json")
+        with open(actor_file) as af:
+            actor = json.load(af)
+
+        # Slice Spritesheet
+        spritesheet = actor.get("spritesheet")
+        if spritesheet is not None:
+            images = slice_spritesheet(actor["size"], self.images_path, **spritesheet)
+            initial_image = images[actor.get("initial_slice", 0)]
+
+        animations = actor.get("animations")
+        # if animations is not None:
+        #     animator = SpriteAnimator(animations)
+
+        actor_sprite = ActorSprite(
+            images=images,
+            animations=animations,
+            x=x,
+            y=y,
+            width=spritesheet["slice_specs"]["w"],
+            height=spritesheet["slice_specs"]["h"],
+            image=initial_image,
+            name=actor["name"],
+            type=self.object_types[actor_type]
+        )
+        for prop in actor_sprite.type.additional_properties:
+            setattr(actor_sprite, prop, actor_sprite.type.additional_properties[prop])
+
+        logging.info(f"Loading Actor {actor_sprite.name}")
+        stage.actors.add(actor_sprite)
+        stage.sprite_layers.add(actor_sprite, layer=layer)
+        stage.collision_index.insert(actor_sprite, actor_sprite.bbox)
+
+        if actor_type == "Player":
+            stage.player = actor_sprite
+        logging.info(f"Player: {stage.player}")
 
     def load_map_to_stage(self, map_file: str, stage: Stage):
         """Build a map image/Surface based on Tiled JSON Map format.
@@ -165,7 +211,7 @@ class MapLoader:
             tilemap = json.load(f)
 
         # Load in Tilesets for the Map
-        logging.info(f"First Tileset Source: {tilemap['tilesets'][0]['source']}")
+        # logging.info(f"First Tileset Source: {tilemap['tilesets'][0]['source']}")
         for tileset in tilemap['tilesets']:
             self.load_tileset(tileset)
 
@@ -195,6 +241,7 @@ class MapLoader:
                 tiled_objects = list(self.load_from_objectlayer(layer))
                 logging.info(f"Tiled Objects: {len(tiled_objects)}")
                 game_objects = self.tiled_objects_processing(tiled_objects)
+
                 # Post object load processing
                 for go in game_objects:
                     logging.info(f"Loading Game Object {go.type.name}")
@@ -205,8 +252,10 @@ class MapLoader:
         # Tilemap and Objects are in, Finalize the Stage
         # TODO: On_Enter or On_Ready hooks
         # Find Spawn Point, load Player
-        # spawn_point = next(o for o in self.props.sprites() if o.type == "Spawn Point")
-        # spawn_coordinates = (spawn_point.x, spawn_point.y)
+        spawn_point = next(o for o in stage.props.sprites() if o.type.name == "Spawn Point")
+        spawn_coordinates = (spawn_point.x, spawn_point.y)
+        logging.info(f"Player Spawn Coodinates: {spawn_coordinates}")
+        self.load_actor_to_stage("Player", spawn_point.x, spawn_point.y, stage, i+1)
 
 def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slices: list) -> list[pygame.Surface]:
     """file, frame_size, frames"""

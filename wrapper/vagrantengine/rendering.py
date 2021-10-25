@@ -10,6 +10,7 @@ import pygame.font
 from .game import Stage
 
 COLOR_BLACK = (0, 0, 0)
+COLOR_RED = (255, 0, 0)
 COLOR_WHITE = (255, 255, 255)
 COLOR_TRANSPARENT = (0, 0, 0, 0)
 
@@ -109,8 +110,50 @@ class DebugRenderer:
     def __init__(self, game: Stage, surface: pygame.Surface):
         self._game = game
         self._surface = surface
+        
+        self._game_area = pygame.Surface(game.boundary).convert_alpha()
+        self._game_area.fill(COLOR_TRANSPARENT)
+        self._destination_x = 0
+        self._destination_y = 0
+        self._viewport = pygame.display.get_surface().get_rect() # init to 0,0
+        
+        if self._viewport.w > self._game.boundary[0]: # Viewport wider than scene
+            # Set destination left
+            self._destination_x = self._viewport.centerx - (self._game.boundary[0] / 2)
+            # Shrink viewport width
+            self._viewport.w = self._game.boundary[0]
+        if self._viewport.h > self._game.boundary[1]: # Viewport taller than scene
+            # Set destination top
+            self._destination_y = self._viewport.centery - (self._game.boundary[1] / 2)
+            # Shrink viewport height
+            self._viewport.h = self._game.boundary[1]
 
         self.debug_font = pygame.font.Font(None, 24)
+
+    @property
+    def viewport(self) -> pygame.Rect:
+        """Calculate and return the Renderer's current viewport
+        based on viewport size and current stage's focus point & boundary"""
+        # TODO: Give Focus Point a dirty flag and only re-calc on dirty        
+
+        # logging.info(f"Focus: {self._game.focus_point}")
+        _viewport = pygame.Rect(
+            self._game.focus_point[0] - (self._viewport.w / 2), # left
+            self._game.focus_point[1] - (self._viewport.h / 2), # top
+            self._viewport.w, self._viewport.h # width, height
+        )
+
+        # Too far left or right?
+        if _viewport.left < 0: _viewport.left = 0
+        if _viewport.right > self._game.boundary[0]:
+            _viewport.right = self._game.boundary[0]
+        # Too far up or down?
+        if _viewport.top < 0: _viewport.top = 0
+        if _viewport.bottom > self._game.boundary[1]:
+            _viewport.bottom = self._game.boundary[1]
+        
+        self._viewport = _viewport
+        return _viewport
 
     def draw_debug(self):
         """Draw debug stats over game for dev/test"""
@@ -120,16 +163,16 @@ class DebugRenderer:
         
         if self._game.player is not None:
             debug_dict = {
-                "Animation Frame": self._game.player_character.animator.frame_count,
-                "Frame Threshold": self._game.player_character.animator.threshold,
-                "Current Animation": self._game.player_character.animator.current_animation,
-                "Current Index": self._game.player_character.animator.current_index,
-                "Current Slice": self._game.player_character.animator.current_slice,
-                "Stack Count": len(self._game.player_character.animator.stack),
-                "Is Current ?": (self._game.player_character.animator.current is not None),
-                "Player Position": self._game.player_character.bbox,
+                "Animation Frame": self._game.player.animator.frame_count,
+                "Frame Threshold": self._game.player.animator.threshold,
+                "Current Animation": self._game.player.animator.current_animation,
+                "Current Index": self._game.player.animator.current_index,
+                "Current Slice": self._game.player.animator.current_slice,
+                "Stack Count": len(self._game.player.animator.stack),
+                "Is Current ?": (self._game.player.animator.current is not None),
+                "Player Position": self._game.player.bbox,
                 "Table Position": self._game.props.sprites()[0].bbox,
-                "Sprites Moving": len(list(s for s in self._game.sprites.sprites() if s.is_moving))
+                "Sprites Moving": len(list(s for s in self._game.actors.sprites() if s.is_moving))
             }
             current_height = 10
             for k, v in debug_dict.items():
@@ -140,6 +183,19 @@ class DebugRenderer:
                 changes.append(pygame.Rect(10, current_height, font_width, font_height))
                 current_height += font_height
 
+        props = self._game.props.sprites()
+        for p in props:
+            pygame.draw.rect(
+                self._game_area,
+                COLOR_RED,
+                p.rect,
+                1
+            )
+
+        pygame.display.get_surface().blit(self._game_area,
+            (self._destination_x, self._destination_y),
+            self.viewport
+        )
         pygame.display.get_surface().blit(self._surface, (0, 0))
 
         return changes

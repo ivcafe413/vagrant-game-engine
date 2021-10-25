@@ -92,7 +92,7 @@ class AnimatedSprite(GameSprite):
         super().__init__(**kwargs)
 
         self.images = images
-        self.animations = SpriteAnimator(animations)
+        self.animator = SpriteAnimator(animations)
 
     def update(self, *args, **kwargs) -> None:
         super().update(args, kwargs)
@@ -144,6 +144,7 @@ class MoveableSprite(GameSprite):
                     horizontal_impact = c.right - self.left
                 else: horizontal_impact = None
                 logging.info(f"Horizontal Impact: {horizontal_impact}")
+
                 if cardinal.y < 0:
                     vertical_impact = c.top - self.bottom
                 elif cardinal.y > 0:
@@ -151,9 +152,9 @@ class MoveableSprite(GameSprite):
                 else: vertical_impact = None
                 logging.info(f"Vertical Impact: {vertical_impact}")
 
-                if vertical_impact is None or abs(horizontal_impact) < abs(vertical_impact):
+                if vertical_impact is None or (horizontal_impact is not None and abs(horizontal_impact) < abs(vertical_impact)):
                     self.rect = self.rect.move(horizontal_impact, 0)
-                elif horizontal_impact is None or abs(vertical_impact) < abs(horizontal_impact):
+                elif horizontal_impact is None or (vertical_impact is not None and abs(vertical_impact) < abs(horizontal_impact)):
                     self.rect = self.rect.move(0, vertical_impact)
                 index.insert(self, self.bbox)
 
@@ -166,47 +167,6 @@ class MoveableSprite(GameSprite):
 class ActorSprite(MoveableSprite, AnimatedSprite):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
-# class MySprite(DirtySprite):
-#     def __init__(self, **kwargs):
-#         super().__init__()
-#         self.name = kwargs.get("name", self.__class__.__name__)
-
-#         self.images = None # type: list[pygame.Surface]
-#         self.animator = None # type: SpriteAnimator
-
-#         # Always account for possible keyword argument empty values (when possible)
-#         spritesheet = kwargs.get("spritesheet")
-#         image_file = kwargs.get("image_file")
-#         size = kwargs.get("size")
-
-#         if spritesheet is not None:
-#             self.images = slice_spritesheet(size, kwargs.get("images_path"), **spritesheet)
-#             self.image = self.images[kwargs.get("initial_slice", 0)]
-            
-#         elif image_file is not None:
-#             # self.images = [kwargs.get("image", pygame.Surface((size, size)))]
-#             # self.image = self.images[0]
-#             image = pygame.image.load(os.path.join(kwargs.get("images_path"), image_file)).convert_alpha()
-#             # TODO: Scaled Height against set Width (size)
-#             image = pygame.transform.scale(image, (size, size))
-#             self.images = [image]
-#             self.image = image
-#             # self.mask = pygame.mask.from_surface(self.image)
-#         else:
-#             self.image = kwargs.get("image")
-        
-#         self.mask = pygame.mask.from_surface(self.image)
-
-#         animations = kwargs.get("animations")
-#         if animations is not None:
-#             self.animator = SpriteAnimator(animations)
-#             # self.image = self.images[self.animator.current_slice]
-#         # else:
-#         #     self.image = self.images[0]
-
-#         self.rect = self.image.get_rect(x = kwargs.get("x", 0), y = kwargs.get("y", 0))
-#         self.last_rect = None # type: pygame.Rect
 
 #     # Sprite comes with an abstract update method, override
 #     def update(self, *args, **kwargs) -> None:
