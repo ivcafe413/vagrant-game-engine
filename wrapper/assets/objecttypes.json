@@ -1,0 +1,31 @@
+[
+    {
+        "color": "#ff00aa00",
+        "name": "Player",
+        "properties": [
+        ]
+    },
+    {
+        "color": "#ffff0000",
+        "name": "Solid",
+        "properties": [
+            {
+                "name": "solid",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "color": "#ffa0a0a4",
+        "name": "Spawn Point",
+        "properties": [
+        ]
+    },
+    {
+        "color": "#ffff00ff",
+        "name": "Wall",
+        "properties": [
+        ]
+    }
+]

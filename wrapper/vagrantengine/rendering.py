@@ -79,7 +79,7 @@ class Renderer:
 
     def draw_game(self) -> list[pygame.Rect]:
         """"""
-        changes = self._game.sprites.draw(self._game_area)
+        changes = self._game.sprite_layers.draw(self._game_area)
         # Blit and flip viewport -> display
         pygame.display.get_surface().blit(self._game_area,
             (self._destination_x, self._destination_y),
@@ -118,7 +118,7 @@ class DebugRenderer:
 
         self._surface.fill(COLOR_TRANSPARENT)
         
-        if self._game.player_character is not None:
+        if self._game.player is not None:
             debug_dict = {
                 "Animation Frame": self._game.player_character.animator.frame_count,
                 "Frame Threshold": self._game.player_character.animator.threshold,

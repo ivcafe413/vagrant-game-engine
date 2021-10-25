@@ -54,10 +54,10 @@ pygame.event.set_blocked([
     pygame.MOUSEMOTION
 ])
 key_bindings = {
-    pygame.K_UP: "player_character_up",
-    pygame.K_DOWN: "player_character_down",
-    pygame.K_LEFT: "player_character_left",
-    pygame.K_RIGHT: "player_character_right"
+    pygame.K_UP: "player_up",
+    pygame.K_DOWN: "player_down",
+    pygame.K_LEFT: "player_left",
+    pygame.K_RIGHT: "player_right"
 }
 register_key_bindings(key_bindings)
 

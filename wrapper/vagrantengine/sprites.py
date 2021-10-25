@@ -10,69 +10,115 @@ from pygame.sprite import DirtySprite
 from pyqtree import Index
 
 from .animators import SpriteAnimator
+from .tiled import TiledType
 
-# from constants import ROOT_PATH
-
-# IMAGES = os.path.join(ROOT_PATH, "assets", "images")
-        
-class MySprite(DirtySprite):
-    def __init__(self, **kwargs):
+# New Set of Classes around re-vamped TileMap loading system
+class TilemapSprite(DirtySprite):
+    def __init__(self, tilemap: pygame.Surface, **kwargs):
         super().__init__()
+
+        self.image = tilemap
+        self.rect = tilemap.get_rect()
+
+class GameSprite(DirtySprite):
+    def __init__(self, x, y, width, height, image=None, **kwargs):
+        super().__init__()
+
         self.name = kwargs.get("name", self.__class__.__name__)
-
-        self.images = None # type: list[pygame.Surface]
-        self.animator = None # type: SpriteAnimator
-
-        # Always account for possible keyword argument empty values (when possible)
-        spritesheet = kwargs.get("spritesheet")
-        image_file = kwargs.get("image_file")
-        size = kwargs.get("size")
-
-        if spritesheet is not None:
-            self.images = slice_spritesheet(size, kwargs.get("images_path"), **spritesheet)
-            self.image = self.images[kwargs.get("initial_slice", 0)]
-            
-        elif image_file is not None:
-            # self.images = [kwargs.get("image", pygame.Surface((size, size)))]
-            # self.image = self.images[0]
-            image = pygame.image.load(os.path.join(kwargs.get("images_path"), image_file)).convert_alpha()
-            # TODO: Scaled Height against set Width (size)
-            image = pygame.transform.scale(image, (size, size))
-            self.images = [image]
-            self.image = image
-            # self.mask = pygame.mask.from_surface(self.image)
+        self.type = kwargs.get("type") # type: TiledType
+        # self.rect = pygame.Rect(kwargs.get("x"), kwargs.get("y"), kwargs.get("width"), kwargs.get("height"))
+        self.rect = pygame.Rect(x, y, width, height)
+        if image is None:
+            self.image = pygame.Surface((width, height)).convert_alpha()
+            self.image.fill((0, 0, 0, 0))
         else:
-            self.image = kwargs.get("image")
-        
-        self.mask = pygame.mask.from_surface(self.image)
+            self.image = image
 
-        animations = kwargs.get("animations")
-        if animations is not None:
-            self.animator = SpriteAnimator(animations)
-            # self.image = self.images[self.animator.current_slice]
-        # else:
-        #     self.image = self.images[0]
-
-        self.rect = self.image.get_rect(x = kwargs.get("x", 0), y = kwargs.get("y", 0))
         self.last_rect = None # type: pygame.Rect
+        if self.image is not None:
+            self.mask = pygame.mask.from_surface(self.image)
 
-        # Game properties
-        self.solid = kwargs.get("solid", False)
+        # self.images = None # type: list[pygame.Surface]
+        # self.animator = None # type: SpriteAnimator
 
-    # Sprite comes with an abstract update method, override
+        # Sprite comes with an abstract update method, override
     def update(self, *args, **kwargs) -> None:
         # Single frame is passing. Can count internally for frame/anim changes
         self.last_rect = self.rect
 
-        if self.animator is not None:
-            self.animator.step()
+    @property
+    def x(self):
+        return self.rect.x
+
+    @property
+    def center(self):
+        return self.rect.center
+
+    @property
+    def left(self):
+        return self.rect.left
+
+    @property
+    def right(self):
+        return self.rect.right
+
+    @property
+    def y(self):
+        return self.rect.y
+
+    @property
+    def top(self):
+        return self.rect.top
+
+    @property
+    def bottom(self):
+        return self.rect.bottom
+
+    # These properteis are for use with pyqtree, movement/collision detection
+    @property
+    def bbox(self):
+        return (self.rect.left, self.rect.top, self.rect.right, self.rect.bottom)
+
+    @property
+    def last_bbox(self):
+        return (self.last_rect.left, self.last_rect.top, self.last_rect.right, self.last_rect.bottom)
+
+    @property
+    def is_moving(self):
+        return self.rect != self.last_rect
+
+class AnimatedSprite(GameSprite):
+    def __init__(self, images: list[pygame.Surface], animations, **kwargs):
+        super().__init__(**kwargs)
+
+        self.images = images
+        self.animations = SpriteAnimator(animations)
+
+    def update(self, *args, **kwargs) -> None:
+        super().update(args, kwargs)
+        self.animator.step()
             
-            if self.animator.dirty:
-                # Change in animation frame
-                self.image = self.images[self.animator.current_slice]
-                self.mask = pygame.mask.from_surface(self.image)
-                self.dirty = 1
-                self.animator.dirty = False
+        if self.animator.dirty:
+            # Change in animation frame
+            self.image = self.images[self.animator.current_slice]
+            self.mask = pygame.mask.from_surface(self.image)
+            self.dirty = 1
+            self.animator.dirty = False
+
+class MoveableSprite(GameSprite):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.movement_vector = (0, 0) # init, not moving
+        self.speed = 5
+
+    def apply_movement_vector(self, x, y):
+        """Build a movement vector for the actor.
+        Is additive, can be called multiple times.
+        Actor.update processes the move."""
+        dx = self.movement_vector[0] + (x * self.speed)
+        dy = self.movement_vector[1] + (y * self.speed)
+        self.movement_vector = (dx, dy)
 
     def resolve_collisions(self, index: Index):
         collisions = (o for o in index.intersect(self.bbox) if o != self)
@@ -111,118 +157,68 @@ class MySprite(DirtySprite):
                     self.rect = self.rect.move(0, vertical_impact)
                 index.insert(self, self.bbox)
 
-    @property
-    def x(self):
-        return self.rect.x
-
-    @property
-    def center(self):
-        return self.rect.center
-
-    @property
-    def left(self):
-        return self.rect.left
-
-    @property
-    def right(self):
-        return self.rect.right
-
-    @property
-    def y(self):
-        return self.rect.y
-
-    @property
-    def top(self):
-        return self.rect.top
-
-    @property
-    def bottom(self):
-        return self.rect.bottom
-
-    # This property is for use with pyqtree
-    @property
-    def bbox(self):
-        return (self.rect.left, self.rect.top, self.rect.right, self.rect.bottom)
-
-    @property
-    def last_bbox(self):
-        return (self.last_rect.left, self.last_rect.top, self.last_rect.right, self.last_rect.bottom)
-
-    @property
-    def is_moving(self):
-        return self.rect != self.last_rect
-
-class Actor(MySprite):
-    def __init__(self, images_path, **kwargs):
-        super().__init__(images_path, **kwargs)
-
-        self.is_player = kwargs.get("player_character", False)
-
-        self.movement_vector = (0, 0) # init, not moving
-        self.speed = 5
-
-    def apply_movement_vector(self, x, y):
-        """Build a movement vector for the actor.
-        Is additive, can be called multiple times.
-        Actor.update processes the move."""
-        dx = self.movement_vector[0] + (x * self.speed)
-        dy = self.movement_vector[1] + (y * self.speed)
-        self.movement_vector = (dx, dy)
-
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)
         if any(v != 0 for v in self.movement_vector):
             self.rect = self.rect.move(self.movement_vector)
             self.dirty = 1
 
-    # def resolve_collision(self, collider: MySprite, index: Index):
-    #     """"""
-    #     if collider.solid:
-    #         # 
-    #         # If it's solid, bump 'myself' away
-    #         index.remove(self, self.bbox)
-    #         # Reset my position
-    #         self.rect = self.last_rect
-    #         index.insert(self, self.bbox)
-
-class Tile(MySprite):
+class ActorSprite(MoveableSprite, AnimatedSprite):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        
+# class MySprite(DirtySprite):
+#     def __init__(self, **kwargs):
+#         super().__init__()
+#         self.name = kwargs.get("name", self.__class__.__name__)
 
-# New Set of Classes around re-vamped TileMap loading system
-class TilemapSprite(DirtySprite):
-    def __init__(self, tilemap: pygame.Surface, **kwargs):
-        super().__init__()
+#         self.images = None # type: list[pygame.Surface]
+#         self.animator = None # type: SpriteAnimator
 
-        self.image = tilemap
-        self.rect = tilemap.get_rect()
+#         # Always account for possible keyword argument empty values (when possible)
+#         spritesheet = kwargs.get("spritesheet")
+#         image_file = kwargs.get("image_file")
+#         size = kwargs.get("size")
 
-def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slices: list) -> list[pygame.Surface]:
-    """file, frame_size, frames"""
-    images = [] # type: list[pygame.Surface]
+#         if spritesheet is not None:
+#             self.images = slice_spritesheet(size, kwargs.get("images_path"), **spritesheet)
+#             self.image = self.images[kwargs.get("initial_slice", 0)]
+            
+#         elif image_file is not None:
+#             # self.images = [kwargs.get("image", pygame.Surface((size, size)))]
+#             # self.image = self.images[0]
+#             image = pygame.image.load(os.path.join(kwargs.get("images_path"), image_file)).convert_alpha()
+#             # TODO: Scaled Height against set Width (size)
+#             image = pygame.transform.scale(image, (size, size))
+#             self.images = [image]
+#             self.image = image
+#             # self.mask = pygame.mask.from_surface(self.image)
+#         else:
+#             self.image = kwargs.get("image")
+        
+#         self.mask = pygame.mask.from_surface(self.image)
 
-    image = pygame.image.load(os.path.join(images_path, file)).convert_alpha()
-    # pygame.image.save(image, os.path.join(SPRITESHEETS, "temp.png"))
+#         animations = kwargs.get("animations")
+#         if animations is not None:
+#             self.animator = SpriteAnimator(animations)
+#             # self.image = self.images[self.animator.current_slice]
+#         # else:
+#         #     self.image = self.images[0]
 
-    # Scale frame size to tile size (by width)
-    delta = size / slice_specs["w"]
-    scaled_height = round(slice_specs["h"] * delta)
+#         self.rect = self.image.get_rect(x = kwargs.get("x", 0), y = kwargs.get("y", 0))
+#         self.last_rect = None # type: pygame.Rect
 
-    for y in range(slices[1]):
-        for x in range(slices[0]):
-            s = pygame.Surface((slice_specs["w"], slice_specs["h"])).convert_alpha()
-            s.fill((0, 0, 0, 0)) # IMPORTANT: need to set default background to transparent
-            s.blit(
-                image, # source
-                (0, 0), # dest
-                pygame.Rect # area
-                (
-                    slice_specs["spacing"] + (2 * x * slice_specs["spacing"]) + (x * slice_specs["w"]),
-                    slice_specs["spacing"] + (2 * y * slice_specs["spacing"]) + (y * slice_specs["h"]),
-                    slice_specs["w"], slice_specs["h"]
-                )
-            )
-            # pygame.image.save(frame, os.path.join(SPRITESHEETS, f"non_scaled_{x}_{y}.png"))
-            s = pygame.transform.scale(s, (size, scaled_height))
-            images.append(s)
-    return images
+#     # Sprite comes with an abstract update method, override
+#     def update(self, *args, **kwargs) -> None:
+#         # Single frame is passing. Can count internally for frame/anim changes
+#         self.last_rect = self.rect
+
+#         if self.animator is not None:
+#             self.animator.step()
+            
+#             if self.animator.dirty:
+#                 # Change in animation frame
+#                 self.image = self.images[self.animator.current_slice]
+#                 self.mask = pygame.mask.from_surface(self.image)
+#                 self.dirty = 1
+#                 self.animator.dirty = False

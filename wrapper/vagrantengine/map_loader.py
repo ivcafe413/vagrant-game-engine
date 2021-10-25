@@ -1,6 +1,8 @@
 import logging
 import os
+import pathlib
 import json
+from typing import Generator
 
 import pygame
 import pygame.image
@@ -8,7 +10,8 @@ from pygame.sprite import Sprite
 from pyqtree import Index
 
 from .game import Stage
-from .sprites import TilemapSprite
+from .sprites import GameSprite, TilemapSprite
+from .tiled import TiledObject, TiledType
 
 class MapLoader:
     def __init__(self, assets_path: str):
@@ -18,18 +21,41 @@ class MapLoader:
         self.tilesets_path = os.path.join(assets_path, "tilesets")
         # self.tilesets = tilesets
         self.global_tileset = dict() # type: dict[int, pygame.Surface]
+        self.object_types = dict() # type: dict[str, TiledType]
 
-    def load_tileset(self, tileset_file: str, first_gid: int):
+    def load_tileset(self, ts: dict):
         """Load tiles as pygame Surfaces into a data structure for easy lookup.
         Since Tile Ids are global, consolidate all tiles into a single lookup."""
-        
+        tileset_path = ts["source"]
+        tileset_file = os.path.join(self.tilesets_path, pathlib.PurePath(tileset_path).name)
+        logging.info(f"Tileset File Path: {tileset_file}")
         with open(tileset_file) as f:
             tileset = json.load(f)
-            
-        # Load the full reference image into memory
-        # tileset_image = pygame.image.load(os.path.join(self.images_path, tileset["image"])).convert_alpha()
 
-        # tilecount = 256 # Number of distinct tiles in the tileset
+        # Tileset Image Load
+        tileset_image_path = os.path.join(self.images_path, pathlib.PurePath(tileset["image"]).name)
+        logging.info(f"Tileset Image Path: {tileset_image_path}")
+        tileset_image = pygame.image.load(tileset_image_path).convert_alpha()
+        
+        # Iterate over Tileset Image, load into memory
+        # columns = tileset["imagewidth"] // tileset["tilewidth"]
+        # rows = tileset["imageheight"] // tileset["tileheight"]
+
+        tile_gid = ts["firstgid"]
+        for y in range(0, tileset["imageheight"], tileset["tileheight"]):
+            for x in range(0, tileset["imagewidth"], tileset["tilewidth"]):
+                tile = pygame.Surface((tileset["tilewidth"], tileset["tileheight"])).convert_alpha()
+                tile.fill((0, 0, 0, 0)) # Default Transparency
+                tile.blit(
+                    tileset_image,
+                    (0, 0),
+                    pygame.Rect
+                    (
+                        x, y, tileset["tilewidth"], tileset["tileheight"]
+                    )
+                )
+                self.global_tileset[tile_gid] = tile
+                tile_gid += 1
 
     def load_from_tilelayer(self, tilelayer: dict, tilewidth: int, tileheight: int) -> pygame.Surface:
         """Build the full map image/Surface from layer information"""
@@ -50,16 +76,9 @@ class MapLoader:
         row_index = 0 # Set up row/y counter
 
         for d in map_data:
-            logging.info(f"Map Datum: {d}")
-            try:
-                d_tile = self.global_tileset[d]
-            except KeyError:
-                # Key Not Found. Load and try again
-                # firstid = 0
-                # # Identify the correct tileset to load
-                # for ts in tilesets:
-                #     firstid = ts["firstgid"]
-                pass
+            # logging.info(f"Map Datum: {d}")
+            # try:
+            d_tile = self.global_tileset[d]
 
             map_surface.blit(
                 d_tile,
@@ -72,6 +91,62 @@ class MapLoader:
                 row_index += 1
 
         return map_surface
+
+    def load_tiled_types(self):
+        types_file = os.path.join(self.assets_path, "objecttypes.json")
+        with open(types_file) as f:
+            object_types = json.load(f)
+
+        for ot in object_types:
+            name = ot.get("name")
+            self.object_types[name] = TiledType(name, ot["properties"])
+
+    def load_from_objectlayer(self, objectlayer: dict):
+        """Generate List of Sprite Objects to return and add to game/stage."""
+        object_list = objectlayer['objects'] # type: list[dict]
+        # logging.info(f"Object Layer Objects: {object_list}")
+        for o in object_list:
+            # Load Object Type
+            # object_type = o["type"]
+            # game_object = GameSprite(name=o["name"], type=o["type"], **o)
+            tiled_object = TiledObject(
+                id = o.get("id"),
+                name = o.get("name"),
+                tiledtype = self.object_types[o.get("type")],
+                x = o.get("x"),
+                y = o.get("y"),
+                width = o.get("width"),
+                height = o.get("height"),
+                gid = o.get("gid")
+            )
+            # object_type = next(t for t in object_types if t["name"] == o["type"])
+            # For each prop in type, set attribute on object
+            # for prop in object_type["properties"]:
+            #     setattr(game_object, prop["name"], prop["value"])
+
+            yield tiled_object
+
+    def tiled_objects_processing(self, tiled_objects: list[TiledObject]):
+        """Process objects on the layer into appropriate sprite objects"""
+        # TODO: Pull in Mapping from Game, not Engine
+        environment_types = ["Wall", "Solid", "Spawn Point"]
+        
+        for o in tiled_objects:
+            image = None # type: pygame.Surface
+            if o.gid is not None:
+                logging.info(f"Tiled Object Global Id: {o.gid} for {o.name}")
+                image = self.global_tileset[o.gid]
+
+            object_sprite = None # type: GameSprite
+            if o.type.name in environment_types:
+                # Solid(collidable) normal Game Object
+                # object_sprite = GameSprite(o.rect.x, o.rect.y, o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+                # Accounting for weird Tiled coordniate bug
+                object_sprite = GameSprite(o.rect.x, (o.rect.y - o.rect.h), o.rect.width, o.rect.height, image, name=o.name, type=o.type)
+                for prop in object_sprite.type.additional_properties:
+                    setattr(object_sprite, prop, object_sprite.type.additional_properties[prop])
+
+            yield object_sprite
 
     def load_map_to_stage(self, map_file: str, stage: Stage):
         """Build a map image/Surface based on Tiled JSON Map format.
@@ -89,7 +164,13 @@ class MapLoader:
         with open(map_file) as f:
             tilemap = json.load(f)
 
+        # Load in Tilesets for the Map
         logging.info(f"First Tileset Source: {tilemap['tilesets'][0]['source']}")
+        for tileset in tilemap['tilesets']:
+            self.load_tileset(tileset)
+
+        # Load in Tiled Object Types for Sprite creation
+        self.load_tiled_types()
 
         # Set Up Map Surface
         # map_columns = tilemap['width']
@@ -110,20 +191,49 @@ class MapLoader:
                 # TODO: Move the boundary/index loading outside of map load?
                 stage.boundary = (tilemap.rect.w, tilemap.rect.h)
                 stage.collision_index = Index(bbox=(0, 0, tilemap.rect.w, tilemap.rect.h))
+            elif layer['type'] == 'objectgroup':
+                tiled_objects = list(self.load_from_objectlayer(layer))
+                logging.info(f"Tiled Objects: {len(tiled_objects)}")
+                game_objects = self.tiled_objects_processing(tiled_objects)
+                # Post object load processing
+                for go in game_objects:
+                    logging.info(f"Loading Game Object {go.type.name}")
+                    stage.props.add(go)
+                    stage.sprite_layers.add(go, layer=i)
+                    stage.collision_index.insert(go, go.bbox)
 
-    #     # Load in tileset information
-    #     raw_tilesets = tilemap["tilesets"] # type: list[dict]
-    #     tilesets = dict()
-    #     for t in raw_tilesets:
-    #         with open(os.path.join(self.tilesets_path, t["source"])) as tf:
-    #             tilesets[t["firstgid"]] = json.load(tf)
-    #     single_tileset = tilesets[1]
-    #     tileset_image = pygame.image.load(os.path.join(self.images_path, single_tileset["image"])).convert_alpha()
+        # Tilemap and Objects are in, Finalize the Stage
+        # TODO: On_Enter or On_Ready hooks
+        # Find Spawn Point, load Player
+        # spawn_point = next(o for o in self.props.sprites() if o.type == "Spawn Point")
+        # spawn_coordinates = (spawn_point.x, spawn_point.y)
 
-    #     tilemap_sprite = Tile(image=tilemap_surface)
-    #     stage.tilemap.add(tilemap_sprite)
-    #     stage.boundary = (tilemap_surface.get_width(), tilemap_surface.get_height())
-    #     # Scaffold Collision QuadTree
-    #     stage.collision_index = Index(bbox=(0, 0, tilemap_surface.get_width(), tilemap_surface.get_height()))
+def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slices: list) -> list[pygame.Surface]:
+    """file, frame_size, frames"""
+    images = [] # type: list[pygame.Surface]
 
-    #     stage.sprites.add(tilemap_sprite, layer=0)
+    image = pygame.image.load(os.path.join(images_path, file)).convert_alpha()
+    # pygame.image.save(image, os.path.join(SPRITESHEETS, "temp.png"))
+
+    # Scale frame size to tile size (by width)
+    delta = size / slice_specs["w"]
+    scaled_height = round(slice_specs["h"] * delta)
+
+    for y in range(slices[1]):
+        for x in range(slices[0]):
+            s = pygame.Surface((slice_specs["w"], slice_specs["h"])).convert_alpha()
+            s.fill((0, 0, 0, 0)) # IMPORTANT: need to set default background to transparent
+            s.blit(
+                image, # source
+                (0, 0), # dest
+                pygame.Rect # area
+                (
+                    slice_specs["spacing"] + (2 * x * slice_specs["spacing"]) + (x * slice_specs["w"]),
+                    slice_specs["spacing"] + (2 * y * slice_specs["spacing"]) + (y * slice_specs["h"]),
+                    slice_specs["w"], slice_specs["h"]
+                )
+            )
+            # pygame.image.save(frame, os.path.join(SPRITESHEETS, f"non_scaled_{x}_{y}.png"))
+            s = pygame.transform.scale(s, (size, scaled_height))
+            images.append(s)
+    return images
