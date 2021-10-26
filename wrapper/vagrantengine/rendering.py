@@ -13,6 +13,7 @@ COLOR_BLACK = (0, 0, 0)
 COLOR_RED = (255, 0, 0)
 COLOR_GREEN = (0, 255, 0)
 COLOR_WHITE = (255, 255, 255)
+COLOR_BLUE = (0, 0, 255)
 COLOR_TRANSPARENT = (0, 0, 0, 0)
 
 # Persisting a lot of data for Renderer, classing out
@@ -203,10 +204,19 @@ class DebugRenderer:
                 1
             )
 
-        self._surface.blit(self._game_area,
+        pygame.draw.rect(
+            self._game_area,
+            COLOR_BLUE,
+            self.viewport,
+            1
+        )
+
+        self._surface.blit(
+            self._game_area,
             (self._destination_x, self._destination_y),
             self.viewport
         )
+
         pygame.display.get_surface().blit(self._surface, (0, 0))
         
         return changes

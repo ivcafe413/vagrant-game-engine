@@ -110,7 +110,7 @@ class MoveableSprite(GameSprite):
         super().__init__(**kwargs)
 
         self.movement_vector = (0, 0) # init, not moving
-        self.speed = 5
+        self.speed = kwargs.get("speed", 3)
 
     def apply_movement_vector(self, x, y):
         """Build a movement vector for the actor.
@@ -167,18 +167,3 @@ class MoveableSprite(GameSprite):
 class ActorSprite(MoveableSprite, AnimatedSprite):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-#     # Sprite comes with an abstract update method, override
-#     def update(self, *args, **kwargs) -> None:
-#         # Single frame is passing. Can count internally for frame/anim changes
-#         self.last_rect = self.rect
-
-#         if self.animator is not None:
-#             self.animator.step()
-            
-#             if self.animator.dirty:
-#                 # Change in animation frame
-#                 self.image = self.images[self.animator.current_slice]
-#                 self.mask = pygame.mask.from_surface(self.image)
-#                 self.dirty = 1
-#                 self.animator.dirty = False
