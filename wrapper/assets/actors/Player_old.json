@@ -1,0 +1,33 @@
+
+{
+    "name": "Samurai Link",
+    "size": 32,
+    "spritesheet": {
+        "file": "samurai_link_walking_down.png",
+        "slice_specs": {
+            "w": 32,
+            "h": 64,
+            "spacing": 0
+        },
+        "slices": [4, 1]
+    },
+    "animations": {
+        "walking_up": {
+            "slices": [1, 2, 3, 0],
+            "durations": [10, 10, 10, 10]
+        },
+        "walking_down": {
+            "slices": [1, 2, 3, 0],
+            "durations": [10, 10, 10, 10]
+        },
+        "walking_left": {
+            "slices": [1, 2, 3, 0],
+            "durations": [10, 10, 10, 10]
+        },
+        "walking_right": {
+            "slices": [1, 2, 3, 0],
+            "durations": [10, 10, 10, 10]
+        }
+    },
+    "initial_slice": 0
+}

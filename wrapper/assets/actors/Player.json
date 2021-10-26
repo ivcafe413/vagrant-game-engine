@@ -1,33 +1,33 @@
-
 {
-    "name": "Samurai Link",
-    "size": 32,
+    "name": "Dark Link",
+    "player_character": true,
     "spritesheet": {
-        "file": "samurai_link_walking_down.png",
+        "file": "Dark_Link_SS_Vagrant_v1.png",
         "slice_specs": {
-            "w": 32,
-            "h": 64,
-            "spacing": 0
+            "w": 12,
+            "h": 18,
+            "spacing": 1
         },
-        "slices": [4, 1]
+        "slices": [4, 4],
+        "zoom": 2.0
     },
     "animations": {
         "walking_up": {
-            "slices": [1, 2, 3, 0],
+            "slices": [1, 0, 1, 2],
             "durations": [10, 10, 10, 10]
         },
         "walking_down": {
-            "slices": [1, 2, 3, 0],
+            "slices": [9, 8, 9, 10],
             "durations": [10, 10, 10, 10]
         },
         "walking_left": {
-            "slices": [1, 2, 3, 0],
-            "durations": [10, 10, 10, 10]
+            "slices": [7, 6],
+            "durations": [10, 10]
         },
         "walking_right": {
-            "slices": [1, 2, 3, 0],
-            "durations": [10, 10, 10, 10]
+            "slices": [4, 5],
+            "durations": [10, 10]
         }
     },
-    "initial_slice": 0
+    "initial_slice": 9
 }

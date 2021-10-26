@@ -5,6 +5,7 @@ import json
 from typing import Generator
 
 import pygame
+from pygame import sprite
 import pygame.image
 from pygame.sprite import Sprite
 from pyqtree import Index
@@ -164,20 +165,21 @@ class MapLoader:
         # Slice Spritesheet
         spritesheet = actor.get("spritesheet")
         if spritesheet is not None:
-            images = slice_spritesheet(actor["size"], self.images_path, **spritesheet)
+            images = slice_spritesheet(self.images_path, **spritesheet)
             initial_image = images[actor.get("initial_slice", 0)]
 
         animations = actor.get("animations")
         # if animations is not None:
         #     animator = SpriteAnimator(animations)
 
+        zoom = spritesheet.get("zoom", 1)
         actor_sprite = ActorSprite(
             images=images,
             animations=animations,
             x=x,
             y=y,
-            width=spritesheet["slice_specs"]["w"],
-            height=spritesheet["slice_specs"]["h"],
+            width=spritesheet["slice_specs"]["w"] * zoom,
+            height=spritesheet["slice_specs"]["h"] * zoom,
             image=initial_image,
             name=actor["name"],
             type=self.object_types[actor_type]
@@ -257,7 +259,7 @@ class MapLoader:
         logging.info(f"Player Spawn Coodinates: {spawn_coordinates}")
         self.load_actor_to_stage("Player", spawn_point.x, spawn_point.y, stage, i+1)
 
-def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slices: list) -> list[pygame.Surface]:
+def slice_spritesheet(images_path: str, file: str, slice_specs, slices: list, zoom=None) -> list[pygame.Surface]:
     """file, frame_size, frames"""
     images = [] # type: list[pygame.Surface]
 
@@ -265,8 +267,8 @@ def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slice
     # pygame.image.save(image, os.path.join(SPRITESHEETS, "temp.png"))
 
     # Scale frame size to tile size (by width)
-    delta = size / slice_specs["w"]
-    scaled_height = round(slice_specs["h"] * delta)
+    # delta = size / slice_specs["w"]
+    # scaled_height = round(slice_specs["h"] * delta)
 
     for y in range(slices[1]):
         for x in range(slices[0]):
@@ -283,6 +285,7 @@ def slice_spritesheet(size: int, images_path: str, file: str, slice_specs, slice
                 )
             )
             # pygame.image.save(frame, os.path.join(SPRITESHEETS, f"non_scaled_{x}_{y}.png"))
-            s = pygame.transform.scale(s, (size, scaled_height))
+            if zoom is not None:
+                s = pygame.transform.rotozoom(s, 0, zoom)
             images.append(s)
     return images

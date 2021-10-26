@@ -11,6 +11,7 @@ from .game import Stage
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_RED = (255, 0, 0)
+COLOR_GREEN = (0, 255, 0)
 COLOR_WHITE = (255, 255, 255)
 COLOR_TRANSPARENT = (0, 0, 0, 0)
 
@@ -101,7 +102,8 @@ class Renderer:
             else: # Single
                 updates.extend(steps())
         # logging.info(f"Updates: {updates}")
-
+        # Fixing that the surface is too small for now
+        
         pygame.display.flip()
         # if(len(updates) > 0):
         # pygame.display.update(self.viewport)
@@ -115,7 +117,7 @@ class DebugRenderer:
         self._game_area.fill(COLOR_TRANSPARENT)
         self._destination_x = 0
         self._destination_y = 0
-        self._viewport = pygame.display.get_surface().get_rect() # init to 0,0
+        self._viewport = self._surface.get_rect() # init to 0,0
         
         if self._viewport.w > self._game.boundary[0]: # Viewport wider than scene
             # Set destination left
@@ -158,7 +160,7 @@ class DebugRenderer:
     def draw_debug(self):
         """Draw debug stats over game for dev/test"""
         changes = []
-
+        self._game_area.fill(COLOR_TRANSPARENT)
         self._surface.fill(COLOR_TRANSPARENT)
         
         if self._game.player is not None:
@@ -192,12 +194,21 @@ class DebugRenderer:
                 1
             )
 
-        pygame.display.get_surface().blit(self._game_area,
+        actors = self._game.actors.sprites()
+        for a in actors:
+            pygame.draw.rect(
+                self._game_area,
+                COLOR_GREEN,
+                a.rect,
+                1
+            )
+
+        self._surface.blit(self._game_area,
             (self._destination_x, self._destination_y),
             self.viewport
         )
         pygame.display.get_surface().blit(self._surface, (0, 0))
-
+        
         return changes
 
 def draw_text(surface: pygame.Surface, string: str, x: int, y: int, font: pygame.font.Font):
